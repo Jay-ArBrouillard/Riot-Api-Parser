@@ -49,7 +49,7 @@ public class Main {
             summonerDocument.write(prettySummonerJsonString);
             matchesDocument = new FileWriter("Matches.json");
             matchesDocument.write(prettyMatchesJsonString);
-            System.out.println("Finished");
+            System.out.println("Complete!");
             System.exit(0);
 
         } catch (Exception e) {
@@ -71,16 +71,19 @@ public class Main {
         //Iterate through all ranked players in NA
         //Challenger
         JSONArray players = new JSONArray();
+        System.out.println("Processing challenger players...");
         LeagueList challenger = api.getChallengerLeagueByQueue(Platform.NA, LeagueQueue.RANKED_SOLO_5x5);
         Thread.sleep(DELAY);
         getSummoners(challenger, players);
         System.out.println("Finished challenger players");
 
+        System.out.println("Processing grandmaster players...");
         LeagueList grandmaster = api.getGrandmasterLeagueByQueue(Platform.NA, LeagueQueue.RANKED_SOLO_5x5);
         Thread.sleep(DELAY);
         getSummoners(grandmaster, players);
         System.out.println("Finished grandmaster players");
 
+        System.out.println("Processing master players...");
         LeagueList master = api.getMasterLeagueByQueue(Platform.NA, LeagueQueue.RANKED_SOLO_5x5);
         Thread.sleep(DELAY);
         getSummoners(master, players);
@@ -89,51 +92,61 @@ public class Main {
         String [] divisions = new String[] { "I", "II", "III", "IV"};
 
         for (String division : divisions) {
+            System.out.println("Processing Diamond " + division + " players...");
             Set<LeagueEntry> diamond = api.getLeagueEntries(Platform.NA, "RANKED_SOLO_5x5", "DIAMOND", division);
             Thread.sleep(DELAY);
             getSummoners(diamond, players);
+            System.out.println("Finished Diamond " + division + " players");
         }
-        Set<LeagueEntry> diamond = api.getLeagueEntries(Platform.NA, "RANKED_SOLO_5x5", "DIAMOND", "I");
-        Thread.sleep(DELAY);
-        getSummoners(diamond, players);
-        System.out.println("Finished diamond players");
+        System.out.println("Finished Diamond players");
 
         for (String division : divisions) {
+            System.out.println("Processing Platinum " + division + " players...");
             Set<LeagueEntry> platinum = api.getLeagueEntries(Platform.NA, "RANKED_SOLO_5x5", "PLATINUM", division);
             Thread.sleep(DELAY);
             getSummoners(platinum, players);
+            System.out.println("Finished Platinum " + division + " players");
         }
         System.out.println("Finished platinum players");
 
         for (String division : divisions) {
+            System.out.println("Processing Gold " + division + " players...");
             Set<LeagueEntry> gold = api.getLeagueEntries(Platform.NA, "RANKED_SOLO_5x5", "GOLD", division);
             Thread.sleep(DELAY);
             getSummoners(gold, players);
+            System.out.println("Finished Gold " + division + " players...");
         }
         System.out.println("Finished gold players");
 
         for (String division : divisions) {
+            System.out.println("Processing Silver " + division + " players...");
             Set<LeagueEntry> silver = api.getLeagueEntries(Platform.NA, "RANKED_SOLO_5x5", "SILVER", division);
             Thread.sleep(DELAY);
             getSummoners(silver, players);
+            System.out.println("Finished Silver " + division + " players...");
         }
         System.out.println("Finished silver players");
 
         for (String division : divisions) {
+            System.out.println("Processing Bronze " + division + " players...");
             Set<LeagueEntry> bronze = api.getLeagueEntries(Platform.NA, "RANKED_SOLO_5x5", "BRONZE", division);
             Thread.sleep(DELAY);
             getSummoners(bronze, players);
+            System.out.println("Finished Bronze " + division + " players...");
         }
         System.out.println("Finished bronze players");
 
         for (String division : divisions) {
+            System.out.println("Processing Iron " + division + " players...");
             Set<LeagueEntry> iron = api.getLeagueEntries(Platform.NA, "RANKED_SOLO_5x5", "IRON", division);
             Thread.sleep(DELAY);
             getSummoners(iron, players);
+            System.out.println("Finished Iron " + division + " players...");
         }
         System.out.println("Finished iron players");
 
         //Iterate through all summoners to add each summoners match list
+        System.out.println("Processing matches...");
         for (int i = 0; i < players.length(); i++) {
             JSONObject temp = (JSONObject) players.get(i);
             String accountId = temp.getString("accountId");
@@ -144,7 +157,7 @@ public class Main {
             for (MatchReference match : matchList.getMatches()) {
                 JSONObject m = new JSONObject();
                 m.put("gameId", match.getGameId());
-                buildMatchDetailsJson(match.getGameId());   //may and may not want to build match details now
+                buildMatchDetailsJson(match.getGameId());
                 m.put("champion", match.getChampion());
                 m.put("timestamp", match.getTimestamp());
                 m.put("role", match.getRole());
@@ -155,6 +168,7 @@ public class Main {
         }
         json.put("summoners", players);
         matchDetails.put("matches", matchDetailList);
+        System.out.println("Finished matches and match details");
         return json;
     }
 
