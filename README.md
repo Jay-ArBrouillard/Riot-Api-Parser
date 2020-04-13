@@ -6,12 +6,12 @@ I recommend checking out Riot's API to understand the format of these json files
 https://developer.riotgames.com/apis
 
 Api endpoints used: 
-/lol/league/v4/challengerleagues/by-queue/{queue}
-/lol/league/v4/entries/{queue}/{tier}/{division}
-/lol/league/v4/grandmasterleagues/by-queue/{queue}
-/lol/league/v4/masterleagues/by-queue/{queue}
-/lol/summoner/v4/summoners/{encryptedSummonerId}
-/lol/match/v4/matchlists/by-account/{encryptedAccountId}
+/lol/league/v4/challengerleagues/by-queue/{queue}  
+/lol/league/v4/entries/{queue}/{tier}/{division}  
+/lol/league/v4/grandmasterleagues/by-queue/{queue}  
+/lol/league/v4/masterleagues/by-queue/{queue}  
+/lol/summoner/v4/summoners/{encryptedSummonerId}  
+/lol/match/v4/matchlists/by-account/{encryptedAccountId  
 /lol/match/v4/matches/{matchId}
 
 Example Format Summoner.json:
