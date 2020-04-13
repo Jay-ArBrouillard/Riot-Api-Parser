@@ -204,6 +204,16 @@ public class Main {
             participants.put(participant);
         }
         json.put("participants", participants);
+        //Participant identities
+        JSONArray participantIdentities = new JSONArray();
+        for (ParticipantIdentity p : match.getParticipantIdentities()) {
+            JSONObject participant = new JSONObject();
+            participant.put("participantId", p.getParticipantId());
+            String playerJsonString = new Gson().toJson(p.getPlayer());
+            participant.put("player", playerJsonString);
+            participantIdentities.put(participant);
+        }
+        json.put("participantIdentities", participantIdentities);
         matchDetailList.put(json); //Add one match to the list
     }
 
