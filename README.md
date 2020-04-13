@@ -3,6 +3,7 @@ Queries Riot API for all currently ranked summoners. For each summoner grab the 
 
 Running this program will create two .json files in the base directory of the project namely, "Summoner.json" and "Matches.json".
 Example Format Summoner.json:
+```json
 {
     "id": "14854",
     "accountId": "24552",
@@ -28,8 +29,10 @@ Example Format Summoner.json:
         ...
     ]
 }
+```
 
 Example Format Matches.json:
+```json
 {
     "gameId": 3362621247,
     "platformId": "NA1",
@@ -300,7 +303,7 @@ Example Format Matches.json:
         ...
     ]
 }
-
+```
 
 I recommend checking out Riot's API to understand the format of these json files.
 https://developer.riotgames.com/apis
