@@ -5,7 +5,7 @@ Running this program will create two .json files in the base directory of the pr
 I recommend checking out Riot's API to understand the format of these json files fully.
 https://developer.riotgames.com/apis
 
-Api endpoints used: 
+Api endpoints used:  
 /lol/league/v4/challengerleagues/by-queue/{queue}  
 /lol/league/v4/entries/{queue}/{tier}/{division}  
 /lol/league/v4/grandmasterleagues/by-queue/{queue}  
