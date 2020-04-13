@@ -1,5 +1,7 @@
 # riot_api_parser
 Queries Riot API for all currently ranked summoners. For each summoner grab the matches they have recently played and get the details for each of those matches.
+**NOTE** Due to Riot API rate limitations this program has implemented a delay time between consecutive api call, which means the runtime is in the scope of hours with a default `DELAY` of 2000ms. If you have a production api key then definitely change the `DELAY` variable from 2000ms to 500ms or perhaps 0 and you will see drastically faster runtimes.  
+https://developer.riotgames.com/docs/portal#web-apis_rate-limiting
 
 Running this program will create two .json files in the base directory of the project namely, "Summoner.json" and "Matches.json".
 I recommend checking out Riot's API to understand the format of these json files fully.
