@@ -8,14 +8,14 @@ version '1.0-SNAPSHOT'
 sourceCompatibility = 1.8
 
 repositories {
+    maven { url "https://jitpack.io" }
     mavenCentral()
-    maven { url 'https://jitpack.io' }
+    jcenter()
 }
 
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
     compile 'com.github.taycaldwell:riot-api-java:4.3.0'
-    compile 'org.json:json:20190722'
-    implementation 'com.google.code.gson:gson:2.8.6'
-    implementation "com.merakianalytics.orianna:orianna:4.0.0-rc5"
+    compile 'org.json:json:20171018'
+    implementation 'com.konghq:unirest-java:3.7.01'
 }
