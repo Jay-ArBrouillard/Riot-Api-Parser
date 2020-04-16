@@ -1,27 +1,19 @@
 package endpoints;
 
 import kong.unirest.*;
-import kong.unirest.json.JSONObject;
-
-import java.util.concurrent.CompletableFuture;
 
 public class Endpoints {
 
-    public JSONObject json;
     public final String challengerQueueUri = "https://na1.api.riotgames.com/lol/league/v4/challengerleagues/by-queue/RANKED_SOLO_5x5";
     public final String grandmasterQueueUri = "https://na1.api.riotgames.com/lol/league/v4/grandmasterleagues/by-queue/RANKED_SOLO_5x5";
     public final String masterQueueUri = "https://na1.api.riotgames.com/lol/league/v4/masterleagues/by-queue/RANKED_SOLO_5x5";
     public String leagueEntryQueueUri = "https://na1.api.riotgames.com/lol/league/v4/entries/RANKED_SOLO_5x5/";
     public final String summonerByIdUri = "https://na1.api.riotgames.com/lol/summoner/v4/summoners/";
     public final String matchListUri = "https://na1.api.riotgames.com/lol/match/v4/matchlists/by-account/";
-    public final String matchUri = "https://na1.api.riotgames.com/lol/match/v4/matches/";
+    public static String matchUri = "https://na1.api.riotgames.com/lol/match/v4/matches/";
 
-    public Endpoints() {
-        Unirest.config().socketTimeout(600000).connectTimeout(100000).addDefaultHeader("X-Riot-Token", "RGAPI-2a76bac7-404c-424c-9240-ae18b7f9673d").automaticRetries(true);
-    }
-
-    public void shutdown() {
-        Unirest.shutDown();
+    public Endpoints(String key) {
+        Unirest.config().socketTimeout(600000).connectTimeout(100000).addDefaultHeader("X-Riot-Token", key).automaticRetries(true);
     }
 
     public HttpResponse<JsonNode> getChallengerQueue() {
@@ -58,4 +50,5 @@ public class Endpoints {
         HttpResponse<JsonNode> response = Unirest.get(matchUri+gameId).asJson();
         return response;
     }
+
 }

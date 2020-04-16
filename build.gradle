@@ -16,6 +16,6 @@ repositories {
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
     compile 'com.github.taycaldwell:riot-api-java:4.3.0'
-    compile 'org.json:json:20171018'
     implementation 'com.konghq:unirest-java:3.7.01'
+    compile 'io.github.cdimascio:java-dotenv:5.1.3'
 }

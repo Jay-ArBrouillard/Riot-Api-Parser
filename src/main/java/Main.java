@@ -1,33 +1,61 @@
 import endpoints.EndpointType;
 import endpoints.Endpoints;
-import kong.unirest.HttpResponse;
-import kong.unirest.JsonNode;
+import io.github.cdimascio.dotenv.Dotenv;
+import kong.unirest.*;
 import kong.unirest.json.JSONArray;
 import kong.unirest.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Set;
 
 public class Main {
 
     private static JSONObject summonerJsonObject;
     private static JSONArray playersJsonArray;
     private static JSONObject matchDetails;
-    private static JSONArray matchDetailList;
-    private static ArrayList<String> gameIdArray;
-    private static final int DELAY = 2000; //milliseconds
+    private static JSONArray matchlistArray;
     private static Endpoints endpoints;
 
     public static void main(String[] args) throws InterruptedException, IOException {
         matchDetails = new JSONObject(); //Contains a list of matches
-        matchDetailList = new JSONArray();
         summonerJsonObject = new JSONObject(); //Contains a list of matches
         playersJsonArray = new JSONArray();
-        gameIdArray = new ArrayList<>();
-        endpoints = new Endpoints();
+        matchlistArray = new JSONArray();
+        Dotenv dotenv = Dotenv.load();
+        endpoints = new Endpoints(dotenv.get("RIOT_API_TOKEN"));
         collectSummoners();
+
+        //Reading Summoner.js and produces Matchlist.json
+        String jsonData = readFile("summoner.json");
+        JSONArray jarr = new JSONArray(new JSONObject(jsonData).getJSONArray("summoners").toString());
+        for(int i = 0; i < jarr.length(); i++) {
+            JSONArray mArr = new JSONArray(((JSONObject) jarr.get(i)).getJSONArray("matches").toString());
+            for (int j = 0; j < mArr.length(); j++) {
+                matchlistArray.put((JSONObject) handleExceptions(EndpointType.MATCH, ((JSONObject)mArr.get(j)).getString("gameId"), null));
+            }
+            System.out.printf("%d: %.4f%% complete of %d total\n", i, (Double.valueOf(i) / jarr.length()) * 100, jarr.length());
+        }
+        matchDetails.put("matchList", matchlistArray);
+        writeJson(matchDetails, "matchlist.json");
+    }
+
+    public static String readFile(String filename) {
+        String result = "";
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(filename));
+            StringBuilder sb = new StringBuilder();
+            String line = br.readLine();
+            while (line != null) {
+                sb.append(line);
+                line = br.readLine();
+            }
+            result = sb.toString();
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+        return result;
     }
 
     public static Object handleExceptions(EndpointType e, String data1, String data2) throws InterruptedException {
@@ -59,27 +87,6 @@ public class Main {
                     break;
             }
 
-            if (response.getHeaders().containsKey("X-App-Rate-Limit-Count") && response.getHeaders().containsKey("X-Method-Rate-Limit-Count")) {
-                String appRateLimitCount = response.getHeaders().getFirst("X-App-Rate-Limit-Count");
-                int reqAppPerSec = Integer.parseInt(appRateLimitCount.substring(0, appRateLimitCount.indexOf(":")));
-                int reqAppPer120Sec = Integer.parseInt(appRateLimitCount.substring(appRateLimitCount.indexOf(",")+1, appRateLimitCount.lastIndexOf(":")));
-                String methodRateLimitCount = response.getHeaders().getFirst("X-Method-Rate-Limit-Count");
-                int reqMethodPer10Sec = Integer.parseInt(methodRateLimitCount.substring(0, methodRateLimitCount.indexOf(":")));
-                int reqMethodPer600Sec = Integer.parseInt(methodRateLimitCount.substring(methodRateLimitCount.indexOf(",")+1, methodRateLimitCount.lastIndexOf(":")));
-                if (reqMethodPer600Sec+1 >= 600) {
-                    Thread.sleep(	600000);
-                }
-                else if (reqAppPer120Sec+1 >= 120) {
-                    Thread.sleep(	120000);
-                }
-                else if (reqMethodPer10Sec+1 >= 30) {
-                    Thread.sleep(	10000);
-                }
-                else if (reqAppPerSec+1 >= 20) {
-                    Thread.sleep(2000);
-                }
-            }
-
             if (response.getStatus() == 200) {
                 json = response.getBody().getObject();
                 arr = response.getBody().getArray();
@@ -88,15 +95,16 @@ public class Main {
                  if (response.getStatus() == 429 && response.getHeaders().containsKey("Retry-After")) { //Rate limit exceeded
                      String retry = response.getHeaders().getFirst("Retry-After");
                      if (!retry.isEmpty()) {
+                         System.out.println("Rate limit exceeded sleeping " + retry + " seconds(s)...");
                          Thread.sleep(Integer.parseInt(retry)  * 1000);
                      } else {
+                         System.out.println("Rate limit exceeded sleeping 1 minute...");
                          Thread.sleep(60000); //Sleep a minute
                      }
                  }
                  else {
-                    endpoints.shutdown();
-                    endpoints = new Endpoints();
-                    Thread.sleep(60000); //Sleep a minute
+                     System.out.println(response.getStatusText() + "(" + response.getStatus() + ") sleeping 20 seconds");
+                     Thread.sleep(20000); //Sleep 20
                  }
             }
         } while (json == null && arr == null);
@@ -126,17 +134,17 @@ public class Main {
             String accountId = summonerObject.getString("accountId");
             curr.put("accountId", accountId);
             curr.put("summonerLevel", summonerObject.getString("summonerLevel"));
-            JSONObject matchlistObject = (JSONObject) handleExceptions(EndpointType.MATCHLIST, accountId, null);
+            JSONArray matchlistArray = ((JSONObject) handleExceptions(EndpointType.MATCHLIST, accountId, null)).getJSONArray("matches");
             JSONArray matches = new JSONArray();
-            for (Object o : matchlistObject.getJSONArray("matches")) {
-                JSONObject match = (JSONObject) o;
-                gameIdArray.add(match.getString("gameId"));
+            for (int j = 0; j < matchlistArray.length(); j++) {
+                JSONObject match = (JSONObject) matchlistArray.get(j);
                 matches.put(match);
+                if (j == 2) break; //only save the first 3 games
             }
             curr.put("matches", matches);
             playersJsonArray.put(curr);
             if (i % 10 == 0) {
-                System.out.println((Double.valueOf(i) / challenger.length()) * 100 + "% complete of " + challenger.length() + " with challenger players");
+                System.out.printf("Challenger Players: %.2f%% complete of %d total\n", (Double.valueOf(i) / challenger.length()) * 100, challenger.length());
             }
         }
 
@@ -150,17 +158,17 @@ public class Main {
             String accountId = summonerObject.getString("accountId");
             curr.put("accountId", accountId);
             curr.put("summonerLevel", summonerObject.getString("summonerLevel"));
-            JSONObject matchlistObject = (JSONObject) handleExceptions(EndpointType.MATCHLIST, accountId, null);
+            JSONArray matchlistArray = ((JSONObject) handleExceptions(EndpointType.MATCHLIST, accountId, null)).getJSONArray("matches");
             JSONArray matches = new JSONArray();
-            for (Object o : matchlistObject.getJSONArray("matches")) {
-                JSONObject match = (JSONObject) o;
-                gameIdArray.add(match.getString("gameId"));
+            for (int j = 0; j < matchlistArray.length(); j++) {
+                JSONObject match = (JSONObject) matchlistArray.get(j);
                 matches.put(match);
+                if (j == 2) break; //only save the first 3 games
             }
             curr.put("matches", matches);
             playersJsonArray.put(curr);
             if (i % 10 == 0) {
-                System.out.println((Double.valueOf(i) / grandmaster.length()) * 100 + "% complete of " + grandmaster.length() + " with grandmaster players");
+                System.out.printf("Grandmaster Players: %.2f%% complete of %d total\n", (Double.valueOf(i) / grandmaster.length()) * 100, grandmaster.length());
             }
         }
 
@@ -174,17 +182,17 @@ public class Main {
             String accountId = summonerObject.getString("accountId");
             curr.put("accountId", accountId);
             curr.put("summonerLevel", summonerObject.getString("summonerLevel"));
-            JSONObject matchlistObject = (JSONObject) handleExceptions(EndpointType.MATCHLIST, accountId, null);
+            JSONArray matchlistArray = ((JSONObject) handleExceptions(EndpointType.MATCHLIST, accountId, null)).getJSONArray("matches");
             JSONArray matches = new JSONArray();
-            for (Object o : matchlistObject.getJSONArray("matches")) {
-                JSONObject match = (JSONObject) o;
-                gameIdArray.add(match.getString("gameId"));
+            for (int j = 0; j < matchlistArray.length(); j++) {
+                JSONObject match = (JSONObject) matchlistArray.get(j);
                 matches.put(match);
+                if (j == 2) break; //only save the first 3 games
             }
             curr.put("matches", matches);
             playersJsonArray.put(curr);
             if (i % 10 == 0) {
-                System.out.println((Double.valueOf(i) / master.length()) * 100 + "% complete of " + master.length() + " with master players");
+                System.out.printf("Master Players: %.2f%% complete of %d total\n", (Double.valueOf(i) / master.length()) * 100, master.length());
             }
         }
 
@@ -199,17 +207,17 @@ public class Main {
                 String accountId = summonerObject.getString("accountId");
                 summoner.put("accountId", accountId);
                 summoner.put("summonerLevel", summonerObject.getString("summonerLevel"));
-                JSONObject matchlistObject = (JSONObject) handleExceptions(EndpointType.MATCHLIST, accountId, null);
+                JSONArray matchlistArray = ((JSONObject) handleExceptions(EndpointType.MATCHLIST, accountId, null)).getJSONArray("matches");
                 JSONArray matches = new JSONArray();
-                for (Object m : matchlistObject.getJSONArray("matches")) {
-                    JSONObject match = (JSONObject) m;
-                    gameIdArray.add(match.getString("gameId"));
+                for (int j = 0; j < matchlistArray.length(); j++) {
+                    JSONObject match = (JSONObject) matchlistArray.get(j);
                     matches.put(match);
+                    if (j == 2) break; //only save the first 3 games
                 }
                 summoner.put("matches", matches);
                 playersJsonArray.put(summoner);
                 if (i % 10 == 0) {
-                    System.out.println((Double.valueOf(i) / curr.length()) * 100 + "% complete of " +  curr.length() + " with diamond " + division + " players");
+                    System.out.printf("Diamond %s Players: %.2f%% complete of %d total\n", division, (Double.valueOf(i) / curr.length()) * 100, curr.length());
                 }
                 i++;
             }
@@ -227,17 +235,17 @@ public class Main {
                 String accountId = summonerObject.getString("accountId");
                 summoner.put("accountId", accountId);
                 summoner.put("summonerLevel", summonerObject.getString("summonerLevel"));
-                JSONObject matchlistObject = (JSONObject) handleExceptions(EndpointType.MATCHLIST, accountId, null);
+                JSONArray matchlistArray = ((JSONObject) handleExceptions(EndpointType.MATCHLIST, accountId, null)).getJSONArray("matches");
                 JSONArray matches = new JSONArray();
-                for (Object m : matchlistObject.getJSONArray("matches")) {
-                    JSONObject match = (JSONObject) m;
-                    gameIdArray.add(match.getString("gameId"));
+                for (int j = 0; j < matchlistArray.length(); j++) {
+                    JSONObject match = (JSONObject) matchlistArray.get(j);
                     matches.put(match);
+                    if (j == 2) break; //only save the first 3 games
                 }
                 summoner.put("matches", matches);
                 playersJsonArray.put((JSONObject) o);
                 if (i % 10 == 0) {
-                    System.out.println((Double.valueOf(i) / curr.length()) * 100 + "% complete of " +  curr.length() + " with platinum " + division + " players");
+                    System.out.printf("Platinum %s Players: %.2f%% complete of %d total\n", division, (Double.valueOf(i) / curr.length()) * 100, curr.length());
                 }
                 i++;
             }
@@ -246,7 +254,7 @@ public class Main {
 
         for (String division : divisions) {
             System.out.println("Processing Gold " + division + " players...");
-            JSONArray curr = (JSONArray)  handleExceptions(EndpointType.LEAGUE_QUEUE, "GOLD", division);
+            JSONArray curr = (JSONArray) handleExceptions(EndpointType.LEAGUE_QUEUE, "GOLD", division);
             int i = 0;
             for (Object o : curr) {
                 JSONObject summoner = ((JSONObject) o);
@@ -255,17 +263,17 @@ public class Main {
                 String accountId = summonerObject.getString("accountId");
                 summoner.put("accountId", accountId);
                 summoner.put("summonerLevel", summonerObject.getString("summonerLevel"));
-                JSONObject matchlistObject = (JSONObject) handleExceptions(EndpointType.MATCHLIST, accountId, null);
+                JSONArray matchlistArray = ((JSONObject) handleExceptions(EndpointType.MATCHLIST, accountId, null)).getJSONArray("matches");
                 JSONArray matches = new JSONArray();
-                for (Object m : matchlistObject.getJSONArray("matches")) {
-                    JSONObject match = (JSONObject) m;
-                    gameIdArray.add(match.getString("gameId"));
+                for (int j = 0; j < matchlistArray.length(); j++) {
+                    JSONObject match = (JSONObject) matchlistArray.get(j);
                     matches.put(match);
+                    if (j == 2) break; //only save the first 3 games
                 }
                 summoner.put("matches", matches);
                 playersJsonArray.put((JSONObject) o);
                 if (i % 10 == 0) {
-                    System.out.println((Double.valueOf(i) / curr.length()) * 100 + "% complete of " +  curr.length() + " with gold " + division + " players");
+                    System.out.printf("Gold %s Players: %.2f%% complete of %d total\n", division, (Double.valueOf(i) / curr.length()) * 100, curr.length());
                 }
                 i++;
             }
@@ -274,7 +282,7 @@ public class Main {
 
         for (String division : divisions) {
             System.out.println("Processing Silver " + division + " players...");
-            JSONArray curr = (JSONArray)  handleExceptions(EndpointType.LEAGUE_QUEUE, "SILVER", division);
+            JSONArray curr = (JSONArray) handleExceptions(EndpointType.LEAGUE_QUEUE, "SILVER", division);
             int i = 0;
             for (Object o : curr) {
                 JSONObject summoner = ((JSONObject) o);
@@ -283,17 +291,17 @@ public class Main {
                 String accountId = summonerObject.getString("accountId");
                 summoner.put("accountId", accountId);
                 summoner.put("summonerLevel", summonerObject.getString("summonerLevel"));
-                JSONObject matchlistObject = (JSONObject) handleExceptions(EndpointType.MATCHLIST, accountId, null);
+                JSONArray matchlistArray = ((JSONObject) handleExceptions(EndpointType.MATCHLIST, accountId, null)).getJSONArray("matches");
                 JSONArray matches = new JSONArray();
-                for (Object m : matchlistObject.getJSONArray("matches")) {
-                    JSONObject match = (JSONObject) m;
-                    gameIdArray.add(match.getString("gameId"));
+                for (int j = 0; j < matchlistArray.length(); j++) {
+                    JSONObject match = (JSONObject) matchlistArray.get(j);
                     matches.put(match);
+                    if (j == 2) break; //only save the first 3 games
                 }
                 summoner.put("matches", matches);
                 playersJsonArray.put((JSONObject) o);
                 if (i % 10 == 0) {
-                    System.out.println((Double.valueOf(i) / curr.length()) * 100 + "% complete of " +  curr.length() + " with silver " + division + " players");
+                    System.out.printf("Silver %s Players: %.2f%% complete of %d total\n", division, (Double.valueOf(i) / curr.length()) * 100, curr.length());
                 }
                 i++;
             }
@@ -302,7 +310,7 @@ public class Main {
 
         for (String division : divisions) {
             System.out.println("Processing Bronze " + division + " players...");
-            JSONArray curr = (JSONArray)  handleExceptions(EndpointType.LEAGUE_QUEUE, "BRONZE", division);
+            JSONArray curr = (JSONArray) handleExceptions(EndpointType.LEAGUE_QUEUE, "BRONZE", division);
             int i = 0;
             for (Object o : curr) {
                 JSONObject summoner = ((JSONObject) o);
@@ -311,17 +319,17 @@ public class Main {
                 String accountId = summonerObject.getString("accountId");
                 summoner.put("accountId", accountId);
                 summoner.put("summonerLevel", summonerObject.getString("summonerLevel"));
-                JSONObject matchlistObject = (JSONObject) handleExceptions(EndpointType.MATCHLIST, accountId, null);
+                JSONArray matchlistArray = ((JSONObject) handleExceptions(EndpointType.MATCHLIST, accountId, null)).getJSONArray("matches");
                 JSONArray matches = new JSONArray();
-                for (Object m : matchlistObject.getJSONArray("matches")) {
-                    JSONObject match = (JSONObject) m;
-                    gameIdArray.add(match.getString("gameId"));
+                for (int j = 0; j < matchlistArray.length(); j++) {
+                    JSONObject match = (JSONObject) matchlistArray.get(j);
                     matches.put(match);
+                    if (j == 2) break; //only save the first 3 games
                 }
                 summoner.put("matches", matches);
                 playersJsonArray.put((JSONObject) o);
                 if (i % 10 == 0) {
-                    System.out.println((Double.valueOf(i) / master.length()) * 100 + "% complete of " +  curr.length() + " with bronze " + division + " players");
+                    System.out.printf("Bronze %s Players: %.2f%% complete of %d total\n", division, (Double.valueOf(i) / curr.length()) * 100, curr.length());
                 }
                 i++;
             }
@@ -330,7 +338,7 @@ public class Main {
 
         for (String division : divisions) {
             System.out.println("Processing Iron " + division + " players...");
-            JSONArray curr = (JSONArray)  handleExceptions(EndpointType.LEAGUE_QUEUE, "IRON", division);
+            JSONArray curr = (JSONArray) handleExceptions(EndpointType.LEAGUE_QUEUE, "IRON", division);
             int i = 0;
             for (Object o : curr) {
                 JSONObject summoner = ((JSONObject) o);
@@ -339,17 +347,17 @@ public class Main {
                 String accountId = summonerObject.getString("accountId");
                 summoner.put("accountId", accountId);
                 summoner.put("summonerLevel", summonerObject.getString("summonerLevel"));
-                JSONObject matchlistObject = (JSONObject) handleExceptions(EndpointType.MATCHLIST, accountId, null);
+                JSONArray matchlistArray = ((JSONObject) handleExceptions(EndpointType.MATCHLIST, accountId, null)).getJSONArray("matches");
                 JSONArray matches = new JSONArray();
-                for (Object m : matchlistObject.getJSONArray("matches")) {
-                    JSONObject match = (JSONObject) m;
-                    gameIdArray.add(match.getString("gameId"));
+                for (int j = 0; j < matchlistArray.length(); j++) {
+                    JSONObject match = (JSONObject) matchlistArray.get(j);
                     matches.put(match);
+                    if (j == 2) break; //only save the first 3 games
                 }
                 summoner.put("matches", matches);
                 playersJsonArray.put((JSONObject) o);
                 if (i % 10 == 0) {
-                    System.out.println((Double.valueOf(i) / curr.length()) * 100 + "% complete of " +  curr.length() + " with iron " + division + " players");
+                    System.out.printf("Iron %s Players: %.2f%% complete of %d total\n", division, (Double.valueOf(i) / curr.length()) * 100, curr.length());
                 }
                 i++;
             }
@@ -357,19 +365,6 @@ public class Main {
         }
         summonerJsonObject.put("summoners", playersJsonArray);
         writeJson(summonerJsonObject, "summoner.json");
-
-        //Process Matches.json
-        System.out.println("Processing matches.json");
-        long size = gameIdArray.size();
-        for (int i = 0; i < size; i++) {
-           JSONObject curr = (JSONObject) handleExceptions(EndpointType.MATCH, gameIdArray.get(i), null);
-           matchDetailList.put(curr);
-           if (i % 10 == 0) {
-               System.out.println((Double.valueOf(i) / size) * 100 + "% complete of " + size + " with matches");
-           }
-        }
-        matchDetails.put("matches", matchDetailList);
-        writeJson(matchDetails, "matches.json");
     }
 
     private static void writeJson(JSONObject toWrite, String filename) throws IOException {

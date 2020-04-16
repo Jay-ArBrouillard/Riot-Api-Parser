@@ -1,4 +1,6 @@
 import com.google.gson.Gson;
+import kong.unirest.json.JSONArray;
+import kong.unirest.json.JSONObject;
 import net.rithms.riot.api.RiotApi;
 import net.rithms.riot.api.RiotApiException;
 import net.rithms.riot.api.endpoints.league.constant.LeagueQueue;
@@ -8,8 +10,6 @@ import net.rithms.riot.api.endpoints.league.dto.LeagueList;
 import net.rithms.riot.api.endpoints.match.dto.*;
 import net.rithms.riot.api.endpoints.summoner.dto.Summoner;
 import net.rithms.riot.constant.Platform;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.io.FileWriter;
 import java.util.List;
@@ -467,13 +467,13 @@ public class Legacy {
     private static JSONObject handleTimeLine(Participant p) {
         JSONObject timeline = new JSONObject();
         timeline.put("participantId", p.getParticipantId());
-        timeline.put("creepsPerMinDeltas", new JSONObject(p.getTimeline().getCreepsPerMinDeltas()));
-        timeline.put("xpPerMinDeltas", new JSONObject(p.getTimeline().getXpPerMinDeltas()));
-        timeline.put("goldPerMinDeltas", new JSONObject(p.getTimeline().getGoldPerMinDeltas()));
-        timeline.put("csDiffPerMinDeltas", new JSONObject(p.getTimeline().getCsDiffPerMinDeltas()));
-        timeline.put("xpDiffPerMinDeltas", new JSONObject(p.getTimeline().getXpDiffPerMinDeltas()));
-        timeline.put("damageTakenPerMinDeltas", new JSONObject(p.getTimeline().getDamageTakenPerMinDeltas()));
-        timeline.put("damageTakenDiffPerMinDeltas", new JSONObject(p.getTimeline().getDamageTakenDiffPerMinDeltas()));
+        timeline.put("creepsPerMinDeltas", new JSONObject(String.valueOf(p.getTimeline().getCreepsPerMinDeltas())));
+        timeline.put("xpPerMinDeltas", new JSONObject(String.valueOf(p.getTimeline().getXpPerMinDeltas())));
+        timeline.put("goldPerMinDeltas", new JSONObject(String.valueOf(p.getTimeline().getGoldPerMinDeltas())));
+        timeline.put("csDiffPerMinDeltas", new JSONObject(String.valueOf(p.getTimeline().getCsDiffPerMinDeltas())));
+        timeline.put("xpDiffPerMinDeltas", new JSONObject(String.valueOf(p.getTimeline().getXpDiffPerMinDeltas())));
+        timeline.put("damageTakenPerMinDeltas", new JSONObject(String.valueOf(p.getTimeline().getDamageTakenPerMinDeltas())));
+        timeline.put("damageTakenDiffPerMinDeltas", new JSONObject(String.valueOf(p.getTimeline().getDamageTakenDiffPerMinDeltas())));
         timeline.put("role", new JSONObject(p.getTimeline().getRole()));
         timeline.put("lane", new JSONObject(p.getTimeline().getLane()));
         return timeline;
